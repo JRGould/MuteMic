@@ -8,7 +8,10 @@ const htmlUrl = (relativePath) => Path.join('file://', __dirname, relativePath);
 const mb = menubar({
   index: htmlUrl('index.html'), 
   icon: 'assets/icon-off.png',
+  showOnRightClick: true,
 })
+
+let inputVolume = 100;
 
 const exec = require('child_process').exec;
 
@@ -52,6 +55,17 @@ function setInputVolume(nextState, inputVolume) {
   }
 }
 
+function toggleState(force = false) {
+  const nextState = force || !mb.getOption('icon').match('icon-on') ? 'on' : 'off';
+  getCurrentVolume().then( volumes => {
+    if( nextState === 'off' ) {
+      inputVolume = volumes.input_volume || 100;
+    }
+    setInputVolume(nextState, inputVolume);
+  });
+}
+
+
 function initialize () {
   makeSingleInstance()
 
@@ -59,7 +73,7 @@ function initialize () {
   const isDarkMode = systemPreferences.isDarkMode();
   
   mb.on('ready', function ready () {
-    let inputVolume = 100;
+    
     getCurrentVolume().then( volumes => {
       inputVolume = volumes.input_volume
       console.log('initial input volume', inputVolume);
@@ -71,21 +85,21 @@ function initialize () {
       }
     });
     globalShortcut.register("Command + Control + F12 ", () => {
-      const nextState = !mb.getOption('icon').match('icon-on') ? 'on' : 'off';
-      getCurrentVolume().then( volumes => {
-        if( nextState === 'off' ) {
-          inputVolume = volumes.input_volume || 100;
-        }
-        setInputVolume(nextState, inputVolume);
-      });
+      toggleState();
     });
-  });
   
+    mb.tray.on('click', function show () {
+      toggleState();
+    })
+    
+  });
+
   app.on('ready', () => {
     // createWindow();
   })
 
 }
+
 
 
 // Make this app a single instance app.
