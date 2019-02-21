@@ -9,5 +9,27 @@
 <body>
   <h1 style="text-align: center">Preferences</h1>
   <p>TODO: preferences</p>
+  <button id="quitButton">Quit</button>
+
+  <textarea name="" id="logTA" style="width: 95%; height: 150px; display: block;" ></textarea>
 </body>
+
+<script type="text/javascript">
+  const ipcRenderer = require('electron').ipcRenderer; 
+
+  const quitBtn = document.getElementById('quitButton');
+  quitBtn.addEventListener('click', function () {
+    console.log('quit clicked!');
+      ipcRenderer.send("quitButtonClicked"); 
+  });
+
+  const logTA = document.querySelector('#logTA')
+  logTA.innerHTML = "waiting for logs"
+
+  ipcRenderer.on('logUpdated', function(event, msg){
+    logTA.innerHTML = msg
+  })
+
+</script>
+
 </html>

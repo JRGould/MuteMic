@@ -1,13 +1,13 @@
 const menubar = require('menubar')
-const { app, dialog, globalShortcut, systemPreferences } = require('electron');
+const { app, dialog, globalShortcut, systemPreferences, ipcMain } = require('electron');
 const Url = require('url');
 const Path = require('path');
 
 const htmlUrl = (relativePath) => Path.join('file://', __dirname, relativePath);
-
+const appPath = app.getAppPath();
 const mb = menubar({
   index: htmlUrl('index.html'), 
-  icon: 'assets/icon-off.png',
+  icon:   `${appPath}/assets/icon-off.png`,
   showOnRightClick: true,
 })
 
@@ -15,16 +15,35 @@ let inputVolume = 100;
 
 const exec = require('child_process').exec;
 
+let logs = ''
+
+const isDev = () => Boolean(process.env.npm_lifecycle_script)
+
+const _log = function(){
+  console.log('Arguments', arguments, typeof arguments, typeof arguments.forEach)
+  const logMsg = [...arguments].map(arg => JSON.stringify(arg, null, 2)).join(' ');
+  logs = logMsg + "\n------------\n" + logs;
+  logs = logs.substring(0, 1000);
+  if( mb.window && mb.window.webContents ){
+    mb.window.webContents.send('logUpdated', logs)
+  }
+  if( isDev() ) {
+    console.log.apply(console, [...arguments]);
+  }
+}
+
+_log('Is Dev: ', isDev());
+
 function execute(command, callback = () => null) {
     exec(command, (error, stdout, stderr) => { 
-        console.log({stdout});
+        _log({stdout});
         callback(stdout); 
     });
 };
 
 function getCurrentVolume() {
   return new Promise( (resolve, reject) => {
-    console.log('getting volume in...')
+    _log('getting volume in...')
     execute(`osascript -e 'tell application "System Events" to get volume settings'`, stdout => {
       const volumes = stdout.split(', ').reduce((acc,val) =>{
         const parts = val.split(':');
@@ -33,20 +52,20 @@ function getCurrentVolume() {
         acc[key] = isNaN(parseInt(value)) ? value: parseInt(value);
         return acc;
       }, {});
-      console.log({...volumes});
+      _log({...volumes});
       resolve(volumes)
     });
   })
 }
 
 function setInputIcon(nextState) {
-  const nextIcon = `assets/icon-${nextState}.png`;
+  const nextIcon = `${appPath}/assets/icon-${nextState}.png`;
   mb.setOption('icon', nextIcon);
   mb.tray.setImage(nextIcon);
 }
 
 function setInputVolume(nextState, inputVolume) {
-  console.log('setting', {nextState, inputVolume})
+  _log('setting', {nextState, inputVolume})
   setInputIcon(nextState);
   if( nextState === 'off' ) {
     execute(`osascript -e 'tell application "System Events" to set volume input volume 0'`)
@@ -76,9 +95,10 @@ function initialize () {
     
     getCurrentVolume().then( volumes => {
       inputVolume = volumes.input_volume
-      console.log('initial input volume', inputVolume);
-      if( 0 === inputVolume ) {
+      _log('initial input volume', inputVolume);
+      if( 10 >= inputVolume ) {
         setInputIcon('off');
+        setInputVolume('off');
         inputVolume = 100;
       } else {
         setInputIcon('on');
@@ -90,6 +110,10 @@ function initialize () {
   
     mb.tray.on('click', function show () {
       toggleState();
+    })
+
+    ipcMain.on('quitButtonClicked', function(e, a) {
+      app.quit();
     })
     
   });

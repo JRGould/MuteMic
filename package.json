@@ -5,12 +5,14 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-packager . MuteMic --overwrite --osx-sign && rm -rf /Applications/MuteMic.app && cp -r ./MuteMic-darwin-x64/MuteMic.app /Applications/MuteMic.app"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^3.0.11",
+    "electron": "^4.0.5",
+    "electron-packager": "^13.1.0",
     "packager": "^0.0.4"
   },
   "dependencies": {
